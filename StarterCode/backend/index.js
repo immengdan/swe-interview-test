@@ -1,4 +1,5 @@
 const express = require('express');
+const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
@@ -6,7 +7,13 @@ const PORT = process.env.PORT || 5000;
 
 app.use(express.json());
 
-//implement the CORS config
+// Allow frontend to call the API during local development
+app.use(
+    cors({
+        origin: ['http://localhost:3000'],
+        methods: ['GET', 'DELETE'],
+    })
+);
 
 //products array
 let products = [
@@ -25,12 +32,31 @@ const fetchImageUrl = () => {
 
 //implement the get api for getting products
 app.get('/api/products', (req, res) => {
+    products = products.map((product) =>
+        product.imageUrl ? product : { ...product, imageUrl: fetchImageUrl() }
+    );
 
+    res.json(products);
 });
 
 //implement the delete api for deleting a product by Id
 app.delete('/api/products/:id', (req, res) => {
-    
+    const id = Number(req.params.id);
+
+    if (Number.isNaN(id)) {
+        return res.status(400).json({ message: 'Invalid product id.' });
+    }
+
+    const existingIndex = products.findIndex((product) => product.id === id);
+
+    if (existingIndex === -1) {
+        return res.status(404).json({ message: 'Product not found.' });
+    }
+
+    const deletedProduct = products[existingIndex];
+    products = products.filter((product) => product.id !== id);
+
+    return res.json({ deleted: deletedProduct });
 });
 
 app.listen(PORT, () => {
